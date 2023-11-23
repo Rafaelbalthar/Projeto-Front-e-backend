@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciamento Financeiro</title>
+  <style>
+   body {
+      background-color: #00000096;
+      font-family: Arial, sans-serif;
+      color: #ffffff;
+      background-image: url(uma-pilha-de-cinco-linhas-de-moedas.jpg);
+      background-size:cover;
+      background-repeat: no-repeat;
+      background-attachment: fixed 
+    }
+    input, textarea { 
+      border-radius: 20px 20px 20px 20px;
+      font-size: 15px;
+      text-align: center;
+    }
+    button, select{
+      border-radius: 20px;
+    }
+    form {
+      font-weight: bold;
+      margin-bottom: 40px;
+      text-align: center;
+      position:relative;
+      margin-left: 200px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      text-align: center;
+      background-color: #0000009f;
+      
+    }
+
+    h1{
+      text-align: center;
+      background-color:#0e1072a1;
+      
+    }
+
+    p{
+      font-weight: bold;
+      background-color: #0e1072a1;
+      padding: 10px;
+      text-align: left;
+      padding-left: 100px;
+      
+    }
+    h3{
+      font-weight: bold;
+      background-color: #0e1072a1;
+      padding: 10px;
+      text-align: center;
+    }
+
+    table,
+    th,
+    td {
+      border: 1px solid #000000;
+    }
+
+    th{
+      text-align: center;
+      padding: 10px;
+      background-color:#0e1072a1;
+    }
+    td {
+      padding: 10px;
+      text-align: center;
+    }
+    .container{
+      display: block;
+      position: absolute;
+      width:200px; 
+      height:200px;
+      color:#ffffff;
+      font-weight: bold;
+      padding-left: 50px;
+
+ 
+}
+ 
+  </style>
+</head>
+
+<body>
+  <br>
+  <br>
+  <h1>Gerenciamento Financeiro</h1>
+  <br>
+  <br>
+  <br>
+  <!-- <h3>Gráfico de Receitas/Despesas</h3> -->
+  <div class="container"">
+    <canvas id="myChart"></canvas>
+    <label for=container>Gráfico Receita/Despesa</label>
+  </div>
+  <br> 
+  <br>
+  <br>
+  <br>
+  <form id="transactionForm">
+    <label for="description">Descrição:</label>
+    <input type="text" id="description" required>
+
+    <label for="amount">Valor:</label>
+    <input type="number" id="amount" required>
+
+    <label for="date">Data:</label>
+    <input type="date" id="date" required>
+
+    <!-- Adicionando o campo de seleção para o tipo de transação -->
+    <label for="type">Tipo de Transação:</label>
+    <select id="type">
+      <option value="receita">Receita</option>
+      <option value="despesa">Despesa</option>
+    </select>
+    <br>
+    <br>
+    <button type="button" onclick="addTransaction()">Adicionar Transação</button>
+  </form>
+  <br>
+  <br>
+  <br>
+  <p id="totalAmountDisplay">Valor Total das Transações: 0.00</p>
+
+  <table id="transactionsTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Descrição</th>
+        <th>Valor</th>
+        <th>Data</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let totalAmount = 0;
+
+    async function fetchTransactions() {
+      try {
+        const response = await fetch('/transactions');
+
+        if (!response.ok) {
+          throw new Error(`Erro ao recuperar transações: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        const tableBody = document.querySelector('#transactionsTable tbody');
+        tableBody.innerHTML = '';
+
+        totalAmount = 0;
+
+        data.forEach(transaction => {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${transaction.id}</td>
+                           <td>${transaction.description}</td>
+                           <td>${parseFloat(transaction.amount).toFixed(2)}</td>
+                           <td>${transaction.date}</td>
+                           <td><button onclick="deleteTransaction(${transaction.id})">Excluir</button></td>`;
+          tableBody.appendChild(row);
+
+          totalAmount += parseFloat(transaction.amount);
+        });
+
+        updateTotalAmountDisplay();
+      } catch (error) {
+        console.error(`Erro ao recuperar transações: ${error.message}`);
+      }
+    }
+  
+
+    async function addTransaction() {
+      const description = document.getElementById('description').value;
+      const amount = document.getElementById('amount').value;
+      const date = document.getElementById('date').value;
+      const type = document.getElementById('type').value; // Adicionado para obter o tipo de transação
+
+      await fetch('/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description,
+          amount,
+          date,
+          type,
+        }),
+      });
+
+      fetchTransactions();
+    }
+
+    
+    async function deleteTransaction(id) {
+      const confirmDelete = confirm('Deseja realmente excluir esta transação?');
+      if (confirmDelete) {
+        const response = await fetch(`/transactions/${id}`, {
+          method: 'DELETE',
+        });
+
+        // Verifica se a exclusão foi bem-sucedida antes de atualizar o orçamento
+        if (response.ok) {
+          const { message, deletedTransactionId } = await response.json();
+
+          // Adiciona o ID da transação excluída à mensagem
+          alert(`${message} ID: ${deletedTransactionId}`);
+
+          // Atualiza a tabela e o display do orçamento após a exclusão
+          fetchTransactions();
+          updateTotalAmountDisplay();
+        } else {
+          console.error('Erro ao excluir a transação.');
+        }
+      }
+    }
+
+
+    function updateTotalAmountDisplay() {
+      document.getElementById('totalAmountDisplay').textContent = `Saldo Atual : ${totalAmount.toFixed(2)}`;
+    }
+
+
+    // Carregar transações ao carregar a página
+    fetchTransactions();
+  </script>
+
+<!--        Adicionando o gráfico -->
+      
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('myChart').getContext('2d');
+
+fetch('/transactions')
+    .then(response => response.json())
+    .then(transactions => {
+      // Calcular o total de receitas e despesas
+      const receitas = transactions
+        .filter(transaction => transaction.type === 'receita')
+        .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
+
+      const despesas = transactions
+        .filter(transaction => transaction.type === 'despesa')
+        .reduce((total, transaction) => total + parseFloat(transaction.amount), 0);
+
+      const data = {
+        // labels: ['Receitas', 'Despesas'],
+        datasets: [{
+          data: [receitas, despesas],
+          backgroundColor: ['#0e10726e', '#9b1111b6'],
+        }]
+      };
+
+            const options = {
+        responsive: true,
+      };
+
+      new Chart(ctx, {
+        type: 'pie',
+        data: data,
+        options: options
+      });
+    })
+    .catch(error => console.error('Erro ao obter dados do servidor:', error));
+
+
+  </script>
+</body>
+
+</html>
