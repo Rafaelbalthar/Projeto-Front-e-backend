@@ -7,4 +7,6 @@ Projeto utilizando html, css, javascript com os pacotes nodemon e express e o us
 
 Para instalar as dependências dos pacotes do node do projeto, digite o "npm start".
 
-Abra o arquivo Print_projeto e veja a prévia do html gerado pelo projeto.
+Prévia do html gerado pelo projeto.
+
+![Prévia do html gerado pelo projeto](Print_projeto.PNG)
